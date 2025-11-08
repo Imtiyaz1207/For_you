@@ -1,0 +1,5 @@
+timestamp,event,ip_address,password_attempt,result
+2025-11-08 13:05:07,page_visit,127.0.0.1,,
+2025-11-08 13:05:21,password_attempt,127.0.0.1,23E51A05C1,correct
+2025-11-08 13:05:23,video_button_clicked,127.0.0.1,,clicked
+2025-11-08 13:06:10,story_uploaded,127.0.0.1,,success

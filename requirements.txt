@@ -1,0 +1,5 @@
+Flask==2.3.4
+requests==2.31.0
+python-dotenv==1.1.1
+pytz==2025.7
+Werkzeug==3.1.2
