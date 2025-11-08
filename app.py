@@ -6,6 +6,7 @@ import os
 import csv
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
+import subprocess  # 🔹 for video conversion
 
 app = Flask(__name__)
 
@@ -15,8 +16,6 @@ GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
 
 # Log CSV file
 LOG_FILE = "logs.csv"
-
-# Create CSV if not exists
 if not os.path.exists(LOG_FILE):
     with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -63,9 +62,24 @@ def log_event(event, ip, password_attempt="", result=""):
             print("Google Sheet logging failed:", e)
 
 # -----------------------------
+# Convert video to MP4/H.264
+# -----------------------------
+def convert_to_h264(input_path, output_path):
+    try:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", input_path,
+            "-vcodec", "libx264", "-acodec", "aac",
+            "-movflags", "+faststart",
+            output_path
+        ], check=True)
+        return True
+    except Exception as e:
+        print("Video conversion failed:", e)
+        return False
+
+# -----------------------------
 # Routes
 # -----------------------------
-
 @app.route("/")
 def index():
     ip = get_client_ip()
@@ -102,11 +116,18 @@ def upload_story():
         return jsonify({"error": "No selected file"}), 400
 
     if file and allowed_file(file.filename):
-        filename = secure_filename("story.mp4")  # overwrite old story
-        save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(save_path)
-        log_event("story_uploaded", get_client_ip(), "", "success")
-        return jsonify({"status": "ok", "message": "Story uploaded successfully"})
+        temp_path = os.path.join(app.config["UPLOAD_FOLDER"], "temp_" + secure_filename(file.filename))
+        file.save(temp_path)
+
+        final_path = os.path.join(app.config["UPLOAD_FOLDER"], "story.mp4")
+        # Convert to H.264/MP4
+        if convert_to_h264(temp_path, final_path):
+            os.remove(temp_path)  # remove temporary file
+            log_event("story_uploaded", get_client_ip(), "", "success")
+            return jsonify({"status": "ok", "message": "Story uploaded successfully"})
+        else:
+            os.remove(temp_path)
+            return jsonify({"error": "Video conversion failed"}), 500
     
     return jsonify({"error": "Invalid file type"}), 400
 
